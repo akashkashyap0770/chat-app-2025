@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import ChatRoom from "./ChatRoom"; // Default import for ChatRoom
+import ChatRoom from "./ChatRoom";
 import InputText from "./InputText";
 import UserLogin from "./UserLogin";
 import socketIoClient from "socket.io-client";
@@ -14,31 +14,29 @@ function ChatContainer() {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    socketRef.current = socketIoClient("http://localhost:3001");
+    socketRef.current = socketIoClient(
+      import.meta.env.VITE_SOCKET_URL
+    );
 
     socketRef.current.on("chat", (receivedChats) => {
       setChats(receivedChats);
     });
 
-    return () => {
-      socketRef.current.disconnect();
-    };
+    return () => socketRef.current.disconnect();
   }, []);
-
-  const sendToSocket = (chatList) => {
-    socketRef.current.emit("chat", chatList);
-  };
 
   const addMessage = (chat) => {
     const newChat = {
-      ...chat,
+      message: chat.message,
       user: user.name,
       avatar: user.avatar,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
-    const updatedChats = [...chats, newChat];
-    setChats(updatedChats);
-    sendToSocket(updatedChats);
+
+    socketRef.current.emit("message", newChat);
   };
 
   const Logout = () => {
@@ -48,33 +46,34 @@ function ChatContainer() {
 
   return (
     <div className="w-full min-h-screen bg-blue-400 overflow-hidden flex flex-col">
-  {user ? (
-    <>
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 p-4 bg-blue-300 shadow">
-        <div className="flex items-center gap-3">
-          <img
-            src={user.avatar}
-            alt="Avatar"
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-purple-600"
-          />
-          <h1 className="text-base sm:text-lg md:text-xl">
-            Username: <span className="font-semibold text-purple-600">{user.name.toUpperCase()}</span>
-          </h1>
-        </div>
-        <button
-          className="py-2 px-4 sm:px-6 text-sm sm:text-base text-white bg-purple-600 hover:bg-purple-700 rounded-md"
-          onClick={Logout}
-        >
-          Logout
-        </button>
-      </div>
-      <ChatRoom chats={chats} user={user} />
-      <InputText addMessage={addMessage} />
-    </>
-  ) : (
-    <UserLogin setUser={setUser} />
-  )}
-</div>
+      {user ? (
+        <>
+          <div className="flex justify-between items-center p-4 bg-blue-300">
+            <div className="flex items-center gap-3">
+              <img
+                src={user.avatar}
+                className="w-8 h-8 rounded-full"
+              />
+              <h1 className="font-semibold">
+                {user.name.toUpperCase()}
+              </h1>
+            </div>
+
+            <button
+              onClick={Logout}
+              className="px-4 py-2 bg-purple-600 text-white rounded"
+            >
+              Logout
+            </button>
+          </div>
+
+          <ChatRoom chats={chats} user={user} />
+          <InputText addMessage={addMessage} />
+        </>
+      ) : (
+        <UserLogin setUser={setUser} />
+      )}
+    </div>
   );
 }
 
